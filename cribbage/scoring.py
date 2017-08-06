@@ -1,17 +1,9 @@
 class ScoreCondition():
 
-    def __init__(self, player):
-        self.player = player
-        self.condition_met = False
+    def __init__(self):
+        pass
 
-    def set_condition_met(self):
-        if not self.condition_met:
-            self.condition_met = True
-            print("%s, %s to %s" % (self.description, self.points, self.player.name))
-            return self.points
-        return 0
-
-    def check(self, game):
+    def check(self, hand):
         raise NotImplementedError
 
 
@@ -26,28 +18,43 @@ class JackStarter(ScoreCondition):
         return 0
 
 
-class Pair(ScoreCondition):
+class PairTripleQuad(ScoreCondition):
 
-    description = "pair"
-    points = 2
+    def check(self, table):
+        description = None
+        same, score = 0, 0
+        if len(table) > 1:
+            last = table[-4:][::-1]
+            while same == 0 and last:
+                if all(card.rank['name'] == last[0].rank['name'] for card in last):
+                    same = len(last)
+                last.pop()
+        if same == 2:
+            score = 2
+            description = "pair"
+        elif same == 3:
+            score = 6
+            description = "pair royal"
+        elif same == 4:
+            score = 12
+            description = "double pair royal"
+        return score, description
 
-    def check(self, game):
-        return False
+
+class FifteenCount(ScoreCondition):
+
+    def check(self, table):
+        description = "Fifteen count"
+        value = sum(0 + i.value() for i in table)
+        score = 2 if value == 15 else 0
+        return score, description
 
 
-class Triple(ScoreCondition):
+class ThirtyOneCount(ScoreCondition):
 
-    description = "pair royal"
-    points = 6
+    def check(self, table):
+        description = "Thirty-one count"
+        value = sum(0 + i.value() for i in table)
+        score = 2 if value == 31 else 0
+        return score, description
 
-    def check(self, game):
-        return False
-
-
-class Quadruple(ScoreCondition):
-
-    description = "double pair royal"
-    points = 12
-
-    def check(self, game):
-        return False

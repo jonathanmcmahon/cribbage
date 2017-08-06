@@ -1,5 +1,6 @@
 import random
 
+
 class Player():
 
     def __init__(self, name):
@@ -8,7 +9,7 @@ class Player():
     def pick_crib_cards(self, hand):
         raise NotImplementedError
 
-    def get_move(self, game):
+    def play_card(self, hand, table, crib):
         raise NotImplementedError
 
 
@@ -17,8 +18,9 @@ class RandomPlayer(Player):
     def pick_crib_cards(self, hand):
         return random.sample(hand, 2)
 
-    def get_move(self, game):
-        pass
+    def play_card(self, hand, table, crib):
+        return random.choice(hand)
+
 
 class HumanPlayer(Player):
     pass
