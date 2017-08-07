@@ -12,31 +12,30 @@ class CribbageGame():
 
     def __init__(self):
         self.players = [RandomPlayer("Player1"), RandomPlayer("Player2")]
-        self.score = {player: 0 for player in self.players}
         self.dealer = random.choice(self.players)
         self.board = CribbageBoard(self.players, self.MAX_SCORE)
 
-    def score_hand(self):
-        pass
-
-    def card_score(self):
-        pass
-
     def start(self):
-        while max(self.score.values()) < self.MAX_SCORE:
-            round = CribbageRound(self)
-            round.play()
+        winner = random.choice(self.players)
+        game_score = [0 for p in self.players]
+        while max(game_score) < self.MAX_SCORE:
+            round = CribbageRound(self, dealer=winner)
+            winner = round.play()
+            game_score = [self.board.get_score(p) for p in self.players]
+            print(self.board)
 
 
 class CribbageRound():
 
-    def __init__(self, game):
+    def __init__(self, game, dealer):
         # Replenish deck for each round
         self.deck = Deck()
         self.game = game
         self.hands = {player: [] for player in self.game.players}
         self.crib = []
         self.table = []
+        self.starter = None
+        self.dealer=dealer
 
     def deal(self):
         shuffles = 3  # ACC Rule 2.1
@@ -58,6 +57,8 @@ class CribbageRound():
                 raise IllegalCardChoiceError("Wrong number of cards sent to crib.")
             else:
                 self.crib += cards_to_crib
+                for card in cards_to_crib:
+                    self.hands[p].remove(card)
         assert len(self.crib) == self.game.CRIB_SIZE, "Crib size is not %s" % self.game.CRIB_SIZE
 
     def cut(self):
@@ -66,20 +67,48 @@ class CribbageRound():
         print("Cards cut.")
 
     def play(self):
-        round_done = False
+        loser = None
+        self.cut()
         self.deal()
         self.get_crib()
         self.cut()
-        while not round_done:
+        self.starter = self.deck.draw()
+        if self.starter.get_rank() == 'jack':
+            self.game.board.peg(self.dealer, 1)
+            print("2 points to %s for his heels." % str(self.dealer))
+        active_players = self.game.players[:]
+        while active_players:
             for p in self.game.players:
-                card = p.play_card(hand=self.hands[p], table=self.table, crib=self.crib)
-                self.table.append(card)
-                score, round_done = self.update_score()
-                self.game.board.peg(p, score)
+                if p in active_players:
+                    card = p.play_card(hand=self.hands[p], table=self.table, crib=self.crib)
+                    table_value = sum(i['card'].get_value() for i in self.table) if self.table else 0
+                    if card.get_value() + table_value > 31 or card is None:
+                        print("Player %s chooses go." % str(p))
+                        loser = loser if loser else p
+                        active_players.remove(p)
+                        # If no one can play any more cards, give point to last player to play a card
+                        if len(active_players) == 0:
+                            player_of_last_card = self.table[-1]['player']
+                            self.game.board.peg(player_of_last_card, 1)
+                    else:
+                        self.table.append({'player': p, 'card': card })
+                        print("Player %s plays %s" % (str(p), str(card)))
+                        # Consider cards played by both players when scoring during play
+                        assert table_value <= 31, "Value of cards on table must be <= 31 to be eligible for scoring."
+                        score = self.update_score(cards=[move['card'] for move in self.table])
+                        if score:
+                            self.game.board.peg(p, score)
+        return loser
 
-
-    def update_score(self, table):
-        pass
+    def update_score(self, cards):
+        score = 0
+        score_scenarios = [scoring.ExactlyEqualsN(n=15), scoring.ExactlyEqualsN(n=31),
+                           scoring.HasPairTripleQuad(), scoring.HasStraight()]
+        for scenario in score_scenarios:
+            s, desc = scenario.check(cards)
+            score += s
+            print(desc) if desc else None
+        return score
 
 
 class CribbageBoard():
@@ -88,7 +117,14 @@ class CribbageBoard():
         self.max_score = max_score
         self.pegs = {p: {'front': 0, 'rear': 0} for p in players}
 
+    def __str__(self):
+        return str(self.pegs)
+
+    def __repr__(self):
+        return str(self)
+
     def peg(self, player, points):
+        assert points > 0, "You must peg 1 or more points."
         self.pegs[player]['rear'] = self.pegs[player]['front']
         self.pegs[player]['front'] += points
 
