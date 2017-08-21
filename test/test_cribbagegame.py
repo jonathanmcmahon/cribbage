@@ -4,7 +4,6 @@ import cribbagegame
 
 
 class TestCribbageBoard(unittest.TestCase):
-
     def setUp(self):
         self.players = [RandomPlayer("Player1"), RandomPlayer("Player2")]
         self.board = cribbagegame.CribbageBoard(players=self.players, max_score=121)
@@ -22,17 +21,17 @@ class TestCribbageBoard(unittest.TestCase):
 
 
 class TestCribbageRound(unittest.TestCase):
-
     def setUp(self):
-        self.game = cribbagegame.CribbageGame()
-        self.round = cribbagegame.CribbageRound(self.game)
+        players = [RandomPlayer("Player1"), RandomPlayer("Player2")]
+        self.game = cribbagegame.CribbageGame(players=players)
+        self.round = cribbagegame.CribbageRound(self.game, dealer=self.game.players[0])
 
     def test_get_crib(self):
-        self.round.deal()
-        self.round.get_crib()
+        self.round._deal()
+        self.round._populate_crib()
 
     def test_cut(self):
-        self.round.cut()
+        self.round._cut()
 
 
 if __name__ == '__main__':
