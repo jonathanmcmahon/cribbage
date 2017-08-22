@@ -1,6 +1,7 @@
 """Cribbage score conditions used during and after rounds."""
 from itertools import combinations
 from abc import ABCMeta, abstractmethod
+from collections import namedtuple
 
 
 class ScoreCondition(metaclass=ABCMeta):
@@ -39,6 +40,7 @@ class HasPairTripleQuad(ScoreCondition):
 
 
 class ExactlyEqualsN(ScoreCondition):
+
     def __init__(self, n):
         self.n = n
         super().__init__()
@@ -50,21 +52,58 @@ class ExactlyEqualsN(ScoreCondition):
         return score, description
 
 
-class HasStraight(ScoreCondition):
-    def __is_straight(self, cards):
+class HasStraight_InHand(ScoreCondition):
+
+    @staticmethod
+    def _enumerate_straights(cards):
+        potential_straights = []
+        straights = []
+        straights_deduped = []
+        if cards:
+            for i in range(3,len(cards)+1):
+                potential_straights += list(combinations(cards, i))
+            for p in potential_straights:
+                rank_set = set([card.rank['rank'] for card in p])
+                if ((max(rank_set) - min(rank_set) + 1) == len(p) == len(rank_set)):
+                    straights.append(set(p))
+            for s in straights:
+                subset = False
+                for o in straights:
+                    if s.issubset(o) and s is not o:
+                        subset = True
+                if not subset:
+                    straights_deduped.append(s)
+        return straights_deduped
+
+    @classmethod
+    def check(cls, cards):
+        description = ""
+        points = 0
+        straights = cls._enumerate_straights(cards)
+        for s in straights:
+            assert len(s) >= 3, "Straights must be 3 or more cards."
+            description += "%d-card straight " % len(s)
+            points += len(s)
+        return points, description
+
+
+class HasStraight_DuringPlay(ScoreCondition):
+
+    @staticmethod
+    def _is_straight(cards):
         rank_set = set([card.rank['rank'] for card in cards])
         return ((max(rank_set) - min(rank_set) + 1) == len(cards) == len(rank_set)) if len(cards) > 2 else False
 
-    def check(self, cards):
+    @classmethod
+    def check(cls, cards):
         description = ""
-        card_set = cards
+        card_set = cards[:]
         while card_set:
-            if self.__is_straight(card_set):
+            if cls._is_straight(card_set):
                 description = "%d-card straight" % len(card_set)
                 return len(card_set), description
             card_set.pop(0)
         return 0, description
-
 
 class CountCombinationsEqualToN(ScoreCondition):
     def __init__(self, n):

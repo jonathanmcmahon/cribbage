@@ -180,12 +180,19 @@ class CribbageRound:
                 if self.hands[player_of_last_card]:
                     active_players += [player_of_last_card]
 
+        # Score each player's hand
         for p in self.game.players:
             p_cards_played = [move['card'] for move in self.table if move['player'] == p]
             print("Scoring " + str(p) + "'s hand: " + str(p_cards_played + [self.starter]))
             score = self._score_hand(cards=p_cards_played + [self.starter])  # Include starter card as part of hand
             if score:
                 self.game.board.peg(p, score)
+
+        # Score the crib
+        print("Scoring the crib: " + str(self.crib + [self.starter]))
+        score = self._score_hand(cards=(self.crib + [self.starter]))  # Include starter card as part of crib
+        if score:
+            self.game.board.peg(self.dealer, score)
 
     def _score_play(self, card_seq):
         """Return score for latest move in an active play sequence.
@@ -195,7 +202,7 @@ class CribbageRound:
         """
         score = 0
         score_scenarios = [scoring.ExactlyEqualsN(n=15), scoring.ExactlyEqualsN(n=31),
-                           scoring.HasPairTripleQuad(), scoring.HasStraight()]
+                           scoring.HasPairTripleQuad(), scoring.HasStraight_DuringPlay()]
         for scenario in score_scenarios:
             s, desc = scenario.check(card_seq[:])
             score += s
@@ -210,7 +217,7 @@ class CribbageRound:
         """
         score = 0
         score_scenarios = [scoring.CountCombinationsEqualToN(n=15),
-                           scoring.HasPairTripleQuad(), scoring.HasStraight(), scoring.HasFlush()]
+                           scoring.HasPairTripleQuad(), scoring.HasStraight_InHand(), scoring.HasFlush()]
         for scenario in score_scenarios:
             s, desc = scenario.check(cards[:])
             score += s
@@ -249,6 +256,8 @@ class CribbageBoard:
         assert points > 0, "You must peg 1 or more points."
         self.pegs[player]['rear'] = self.pegs[player]['front']
         self.pegs[player]['front'] += points
+        if self.pegs[player]['front'] > self.max_score:
+            self.pegs[player]['front'] = self.max_score
 
     def get_score(self, player):
         """Return a given player's current score.

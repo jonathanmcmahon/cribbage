@@ -58,15 +58,14 @@ class HumanPlayer(Player):
         """
         cards_selected = []
         while len(cards_selected) < n_cards:
-            print("Please select a card: ")
             s = ""
             for idx, card in enumerate(cards):
                 s += "(" + str(idx + 1) + ") " + str(card)
                 if card != cards[-1]:
                     s += ","
                 s += " "
-            print(s)
             msg = "Select a card: " if n_cards == 1 else "Select %d cards: " % n_cards
+            print(s)
             selection = input(msg)
             card_indices = [int(s) for s in selection.split() if s.isdigit()]
             for idx in card_indices:
